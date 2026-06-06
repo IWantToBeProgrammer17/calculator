@@ -1,108 +1,98 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Display } from './Display';
 import { ButtonGrid } from './ButtonGrid';
+import { evaluateExpression, CalculatorError, power, squareRoot, cubeRoot, naturalLog, commonLog, factorial } from '../utils/calculator';
 
 interface CalculatorState {
   display: string;
-  previousValue: string;
-  operation: string | null;
-  isNewNumber: boolean;
+  error: string | null;
 }
 
 export function Calculator() {
   const [state, setState] = useState<CalculatorState>({
     display: '0',
-    previousValue: '',
-    operation: null,
-    isNewNumber: true,
+    error: null,
   });
+
+  // Keyboard support
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const key = e.key;
+
+      // Numbers and operators
+      if (/^[0-9+\-*/().=]$/.test(key)) {
+        e.preventDefault();
+        handleButtonClick(key);
+      }
+      // Enter for equals
+      else if (key === 'Enter') {
+        e.preventDefault();
+        handleEquals();
+      }
+      // Backspace for delete
+      else if (key === 'Backspace') {
+        e.preventDefault();
+        handleDelete();
+      }
+      // Escape for clear
+      else if (key === 'Escape') {
+        e.preventDefault();
+        handleClear();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [state]);
 
   const handleNumber = (num: string) => {
     setState((prev) => {
-      if (prev.isNewNumber) {
+      // Reset if showing error
+      if (prev.error) {
         return {
-          ...prev,
           display: num,
-          isNewNumber: false,
+          error: null,
         };
       }
 
-      // Prevent multiple decimal points
-      if (num === '.' && prev.display.includes('.')) {
-        return prev;
+      // Prevent multiple decimal points in same number
+      if (num === '.') {
+        const lastNumber = prev.display.split(/[+\-*/()]/).pop() || '';
+        if (lastNumber.includes('.')) {
+          return prev;
+        }
+        // Allow decimal to append to 0
+        if (prev.display === '0') {
+          return {
+            display: '0.',
+            error: null,
+          };
+        }
       }
 
-      // Prevent leading zeros
+      // Replace leading 0 with new character (except for decimal point)
       if (prev.display === '0' && num !== '.') {
         return {
-          ...prev,
           display: num,
+          error: null,
         };
       }
 
       return {
-        ...prev,
         display: prev.display + num,
-      };
-    });
-  };
-
-  const handleOperation = (op: string) => {
-    setState((prev) => {
-      if (prev.operation && !prev.isNewNumber) {
-        // Calculate previous operation if exists
-        const result = calculate(
-          parseFloat(prev.previousValue),
-          parseFloat(prev.display),
-          prev.operation
-        );
-        return {
-          display: result.toString(),
-          previousValue: result.toString(),
-          operation: op,
-          isNewNumber: true,
-        };
-      }
-
-      return {
-        display: prev.display,
-        previousValue: prev.display,
-        operation: op,
-        isNewNumber: true,
-      };
-    });
-  };
-
-  const handleEquals = () => {
-    setState((prev) => {
-      if (!prev.operation || prev.isNewNumber) {
-        return prev;
-      }
-
-      const result = calculate(
-        parseFloat(prev.previousValue),
-        parseFloat(prev.display),
-        prev.operation
-      );
-
-      return {
-        display: isNaN(result) ? 'Error' : result.toString(),
-        previousValue: '',
-        operation: null,
-        isNewNumber: true,
+        error: null,
       };
     });
   };
 
   const handleDelete = () => {
     setState((prev) => {
-      if (prev.isNewNumber) return prev;
+      if (prev.error) return prev;
 
       const newDisplay = prev.display.slice(0, -1);
       return {
-        ...prev,
         display: newDisplay === '' ? '0' : newDisplay,
-        isNewNumber: newDisplay === '',
+        error: null,
       };
     });
   };
@@ -110,41 +100,100 @@ export function Calculator() {
   const handleClear = () => {
     setState({
       display: '0',
-      previousValue: '',
-      operation: null,
-      isNewNumber: true,
+      error: null,
+    });
+  };
+
+  const handleEquals = () => {
+    setState((prev) => {
+      if (prev.error) return prev;
+
+      try {
+        const result = evaluateExpression(prev.display);
+        // Round to avoid floating point errors
+        const rounded = Math.round(result * 1e10) / 1e10;
+
+        return {
+          display: rounded.toString(),
+          error: null,
+        };
+      } catch (error) {
+        const errorMsg =
+          error instanceof CalculatorError ? error.message : 'Invalid expression';
+        return {
+          display: prev.display,
+          error: errorMsg,
+        };
+      }
     });
   };
 
   const handleScientific = (func: string) => {
     setState((prev) => {
-      const value = parseFloat(prev.display);
-      let result: number;
+      try {
+        const value = parseFloat(prev.display);
+        let result: number;
 
-      switch (func) {
-        case '√':
-          result = Math.sqrt(value);
-          break;
-        case '%':
-          result = value / 100;
-          break;
-        default:
-          return prev;
+        switch (func) {
+          // Root functions
+          case '√':
+            result = squareRoot(value);
+            break;
+          case '∛':
+            result = cubeRoot(value);
+            break;
+          case '%':
+            result = value / 100;
+            break;
+          
+          // Trigonometric functions (in degrees)
+          case 'sin':
+            result = Math.sin((value * Math.PI) / 180);
+            break;
+          case 'cos':
+            result = Math.cos((value * Math.PI) / 180);
+            break;
+          case 'tan':
+            result = Math.tan((value * Math.PI) / 180);
+            break;
+          
+          // Logarithmic functions
+          case 'ln':
+            result = naturalLog(value);
+            break;
+          case 'log':
+            result = commonLog(value);
+            break;
+          
+          // Factorial
+          case '!':
+            result = factorial(value);
+            break;
+          
+          default:
+            return prev;
+        }
+
+        const rounded = Math.round(result * 1e10) / 1e10;
+        return {
+          display: isNaN(rounded) ? 'Error' : rounded.toString(),
+          error: null,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof CalculatorError ? error.message : 'Invalid calculation';
+        return {
+          display: prev.display,
+          error: errorMsg,
+        };
       }
-
-      return {
-        ...prev,
-        display: isNaN(result) ? 'Error' : result.toString(),
-        isNewNumber: true,
-      };
     });
   };
 
   const handleButtonClick = (btn: string) => {
     if (btn === '=') {
       handleEquals();
-    } else if (['+', '-', '*', '/'].includes(btn)) {
-      handleOperation(btn);
+    } else if (['+', '-', '*', '/', '(', ')'].includes(btn)) {
+      handleNumber(btn);
     } else {
       handleNumber(btn);
     }
@@ -164,11 +213,7 @@ export function Calculator() {
         {/* Calculator Container */}
         <div className="bg-deep-space-blue border-2 border-blue-green rounded-2xl p-6 md:p-8 shadow-2xl">
           {/* Display Area */}
-          <Display
-            value={state.display}
-            previousValue={state.previousValue}
-            operation={state.operation}
-          />
+          <Display value={state.display} error={state.error} />
 
           {/* Button Grid */}
           <ButtonGrid
@@ -184,23 +229,11 @@ export function Calculator() {
           <p className="text-sky-blue-light text-sm md:text-base">
             Scientific Calculator
           </p>
+          <p className="text-sky-blue-light/50 text-xs mt-2">
+            Keyboard: Numbers, +−*/ Enter=Calculate Backspace=Delete Esc=Clear
+          </p>
         </div>
       </div>
     </div>
   );
-}
-
-function calculate(prev: number, current: number, operation: string): number {
-  switch (operation) {
-    case '+':
-      return prev + current;
-    case '-':
-      return prev - current;
-    case '*':
-      return prev * current;
-    case '/':
-      return current !== 0 ? prev / current : NaN;
-    default:
-      return current;
-  }
 }

@@ -36,7 +36,21 @@ const buttons: GridButton[] = [
 const scientificButtons: GridButton[] = [
   { label: 'C', value: 'C', type: 'clear' },
   { label: 'DEL', value: 'DEL', type: 'delete' },
+  { label: '(', value: '(', type: 'scientific' },
+  { label: ')', value: ')', type: 'scientific' },
+];
+
+const scienceFunctionButtons: GridButton[] = [
   { label: '√', value: '√', type: 'scientific' },
+  { label: '∛', value: '∛', type: 'scientific' },
+  { label: 'ln', value: 'ln', type: 'scientific' },
+  { label: 'log', value: 'log', type: 'scientific' },
+];
+
+const advancedFunctionButtons: GridButton[] = [
+  { label: 'sin', value: 'sin', type: 'scientific' },
+  { label: 'cos', value: 'cos', type: 'scientific' },
+  { label: 'tan', value: 'tan', type: 'scientific' },
   { label: '%', value: '%', type: 'scientific' },
 ];
 
@@ -51,18 +65,44 @@ export function ButtonGrid({
       onClear();
     } else if (btn.value === 'DEL') {
       onDelete();
-    } else if (btn.type === 'scientific' && onScientific) {
+    } else if (['√', '∛', '%', 'sin', 'cos', 'tan', 'ln', 'log', '!'].includes(btn.value) && onScientific) {
+      // Call onScientific for all scientific functions
       onScientific(btn.value);
     } else {
+      // Everything else (numbers, operators, parentheses)
       onButtonClick(btn.value);
     }
   };
 
   return (
     <div className="w-full space-y-3 md:space-y-4">
-      {/* Scientific buttons row */}
+      {/* Control buttons row */}
       <div className="grid grid-cols-4 gap-2 md:gap-3 lg:gap-4">
         {scientificButtons.map((btn) => (
+          <Button
+            key={btn.value}
+            label={btn.label}
+            type={btn.type}
+            onClick={() => handleClick(btn)}
+          />
+        ))}
+      </div>
+
+      {/* Science functions row 1 */}
+      <div className="grid grid-cols-4 gap-2 md:gap-3 lg:gap-4">
+        {scienceFunctionButtons.map((btn) => (
+          <Button
+            key={btn.value}
+            label={btn.label}
+            type={btn.type}
+            onClick={() => handleClick(btn)}
+          />
+        ))}
+      </div>
+
+      {/* Science functions row 2 */}
+      <div className="grid grid-cols-4 gap-2 md:gap-3 lg:gap-4">
+        {advancedFunctionButtons.map((btn) => (
           <Button
             key={btn.value}
             label={btn.label}

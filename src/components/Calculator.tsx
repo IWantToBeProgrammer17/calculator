@@ -230,7 +230,7 @@ export function Calculator() {
             Scientific Calculator
           </p>
           <p className="text-sky-blue-light/50 text-xs mt-2">
-            Keyboard: Numbers, +−*/ Enter=Calculate Backspace=Delete Esc=Clear
+            Keyboard: Numbers, +−*/ Enter=Calculate, Backspace=Delete, Esc=Clear
           </p>
         </div>
       </div>

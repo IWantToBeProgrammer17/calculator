@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Display } from './Display';
 import { ButtonGrid } from './ButtonGrid';
-import { evaluateExpression, CalculatorError, power, squareRoot, cubeRoot, naturalLog, commonLog, factorial } from '../utils/calculator';
+import { evaluateExpression, CalculatorError, squareRoot, cubeRoot, naturalLog, commonLog, factorial } from '../utils/calculator';
 
 interface CalculatorState {
   display: string;
